@@ -2,8 +2,11 @@
 
 include dirname(__FILE__).'/../bootstrap/functional.php';
 
-$subdir1 = sfAssetFolderPeer::retrieveByPath('TESTsubdir1');
-$subdir2 = sfAssetFolderPeer::retrieveByPath('TESTsubdir2');
+$folderProvider = new sfAssetsFolderProvider();
+$assetProvider = new sfAssetsProvider();
+
+$subdir1 = $folderProvider->retrieveByPath('TESTsubdir1');
+$subdir2 = $folderProvider->retrieveByPath('TESTsubdir2');
 
 $browser = new sfTestFunctional(new sfBrowser());
 

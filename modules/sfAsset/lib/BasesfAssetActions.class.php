@@ -2,6 +2,23 @@
 
 class BasesfAssetActions extends sfActions
 {
+	/*
+	 * @var sfAssetsFolderProviderInterface
+	 */
+	protected $folderProvider;
+	
+	/*
+	 * @var sfAssetsProvider
+	 */
+	protected $assetProvider;
+
+	public function preExecute() {
+		parent::preExecute();
+		$this->folderProvider = new sfAssetsFolderProvider();
+		$this->assetProvider = new sfAssetsProvider();
+	}
+
+
   /**
    * redirect to list
    * @param sfWebRequest $request
@@ -18,7 +35,7 @@ class BasesfAssetActions extends sfActions
    */
   public function executeList(sfWebRequest $request)
   {
-    $folder = sfAssetFolderPeer::retrieveByPath($request->getParameter('dir'));
+    $folder = $this->folderProvider->retrieveByPath($request->getParameter('dir'));
     if (!$folder)
     {
       if ($this->getUser()->getFlash('sfAsset_folder_not_found'))
@@ -43,7 +60,7 @@ class BasesfAssetActions extends sfActions
     $this->dirs = $folder->getChildren();
     $this->files = $folder->getSortedFiles($this->dirs, $this->processSort($request));
     $this->nbFiles = count($this->files);
-    $this->totalSize = sfAssetFolderPeer::countFilesSize($this->files);
+    $this->totalSize = $this->folderProvider->countFilesSize($this->files);
     $this->nbDirs = count($this->dirs);
     $this->folder = $folder;
 
@@ -81,7 +98,7 @@ class BasesfAssetActions extends sfActions
 
     $sort = $this->processSort($request);
     $params = $this->form->isValid() ? $this->form->getValues() : array();
-    $this->pager = sfAssetPeer::getPager($params, $sort, $request->getParameter('page', 1), sfConfig::get('app_sfAssetsLibrary_search_pager_size', 20));
+    $this->pager = $this->assetProvider->getPager($params, $sort, $request->getParameter('page', 1), sfConfig::get('app_sfAssetsLibrary_search_pager_size', 20));
 
     $this->removeLayoutIfPopup($request);
   }
@@ -107,7 +124,7 @@ class BasesfAssetActions extends sfActions
   {
     $this->forward404Unless($request->getMethod() == sfRequest::POST, 'method not allowed');
     $sf_asset_folder = $request->getParameter('sf_asset_folder');
-    $folder = sfAssetFolderPeer::retrieveByPk($sf_asset_folder['id']);
+    $folder = $this->folderProvider->retrieveByPk($sf_asset_folder['id']);
     $this->forward404Unless($folder, 'folder not found');
     $this->form = new sfAssetFolderMoveForm($folder);
     $this->form->bind($request->getParameter($this->form->getName()));
@@ -115,7 +132,7 @@ class BasesfAssetActions extends sfActions
     {
       try
       {
-        $targetFolder = sfAssetFolderPeer::retrieveByPK($this->form->getValue('parent_folder'));
+        $targetFolder = $this->folderProvider->retrieveByPK($this->form->getValue('parent_folder'));
         $folder->move($targetFolder);
         $this->dispatcher->notify(new sfEvent($this, 'admin.save_object', array('object' => $folder)));
         $this->getUser()->setFlash('notice', 'The folder has been moved');
@@ -138,7 +155,7 @@ class BasesfAssetActions extends sfActions
   {
     $this->forward404Unless($request->getMethod() == sfRequest::POST, 'method not allowed');
     $sfAssetFolder = $request->getParameter('sf_asset_folder');
-    $folder = sfAssetFolderPeer::retrieveByPk($sfAssetFolder['id']);
+    $folder = $this->folderProvider->retrieveByPk($sfAssetFolder['id']);
     $this->forward404Unless($folder, 'folder not found');
     $this->form = new sfAssetFolderRenameForm($folder);
     $this->form->bind($request->getParameter($this->form->getName()));
@@ -167,7 +184,7 @@ class BasesfAssetActions extends sfActions
   public function executeDeleteFolder(sfWebRequest $request)
   {
     $this->forward404Unless($request->isMethod(sfRequest::DELETE), 'method not allowed');
-    $folder = sfAssetFolderPeer::retrieveByPk($request->getParameter('id'));
+    $folder = $this->folderProvider->retrieveByPk($request->getParameter('id'));
     $this->forward404Unless($folder);
     try
     {
@@ -214,7 +231,7 @@ class BasesfAssetActions extends sfActions
     {
       $this->getUser()->setFlash('warning_message', $e->getMessage());
       $this->getUser()->setFlash('warning_params', $e->getMessageParams());
-      $folder = sfAssetFolderPeer::retrieveByPK($this->form->getValue('folder_id'));
+      $folder = $this->folderProvider->retrieveByPK($this->form->getValue('folder_id'));
       $this->redirectToPath('@sf_asset_library_dir?dir=' . $folder->getRelativePath());
     }
     if ($this->getUser()->hasAttribute('popup', 'sf_admin/sf_asset/navigation'))
@@ -263,7 +280,7 @@ class BasesfAssetActions extends sfActions
         {
           $this->getUser()->setFlash('warning_message', $e->getMessage());
           $this->getUser()->setFlash('warning_params', $e->getMessageParams());
-          $folder = sfAssetFolderPeer::retrieveByPK($this->form->getValue('folder_id'));
+          $folder = $this->folderProvider->retrieveByPK($this->form->getValue('folder_id'));
           $this->redirectToPath('@sf_asset_library_dir?dir=' . $folder->getRelativePath());
         }
         $this->getUser()->setFlash('notice', 'Files successfully uploaded');
@@ -279,7 +296,7 @@ class BasesfAssetActions extends sfActions
   public function executeDeleteAsset(sfWebRequest $request)
   {
     $this->forward404Unless($request->isMethod(sfRequest::DELETE), 'method not allowed');
-    $asset = sfAssetPeer::retrieveByPk($request->getParameter('id'));
+    $asset = $this->assetProvider->retrieveByPk($request->getParameter('id'));
     $this->forward404Unless($asset, 'asset not found');
     try
     {
@@ -311,7 +328,7 @@ class BasesfAssetActions extends sfActions
    */
   public function executeEdit(sfWebRequest $request)
   {
-    $this->sfAsset = sfAssetPeer::retrieveByPK($request->getParameter('id'));
+    $this->sfAsset = $this->assetProvider->retrieveByPK($request->getParameter('id'));
     $this->forward404Unless($this->sfAsset, 'asset not found');
     $this->form = new sfAssetForm($this->sfAsset);
     $this->renameform = new sfAssetRenameForm($this->sfAsset);
@@ -326,7 +343,7 @@ class BasesfAssetActions extends sfActions
   public function executeUpdate(sfWebRequest $request)
   {
     $sfAsset = $request->getParameter('sf_asset');
-    $this->sfAsset = sfAssetPeer::retrieveByPK($sfAsset['id']);
+    $this->sfAsset = $this->assetProvider->retrieveByPK($sfAsset['id']);
     $this->forward404Unless($this->sfAsset, 'asset not found');
     $this->form = new sfAssetForm($this->sfAsset);
     $this->renameform = new sfAssetRenameForm($this->sfAsset);
@@ -353,9 +370,9 @@ class BasesfAssetActions extends sfActions
   {
     $this->forward404Unless($request->getMethod() == sfRequest::POST, 'method not allowed');
     $sfAsset = $request->getParameter('sf_asset');
-    $asset = sfAssetPeer::retrieveByPK($sfAsset['id']);
+    $asset = $this->assetProvider->retrieveByPK($sfAsset['id']);
     $this->forward404Unless($asset, 'asset not found');
-    $destFolder = sfAssetFolderPeer::retrieveByPk($sfAsset['parent_folder']);
+    $destFolder = $this->folderProvider->retrieveByPk($sfAsset['parent_folder']);
     $this->forward404Unless($destFolder, 'destination folder not found');
     $this->form = new sfAssetMoveForm($asset);
     $this->form->bind($request->getParameter($this->form->getName()));
@@ -390,7 +407,7 @@ class BasesfAssetActions extends sfActions
   {
     $this->forward404Unless($request->getMethod() == sfRequest::POST, 'method not allowed');
     $sfAsset = $request->getParameter('sf_asset');
-    $asset = sfAssetPeer::retrieveByPK($sfAsset['id']);
+    $asset = $this->assetProvider->retrieveByPK($sfAsset['id']);
     $this->forward404Unless($asset, 'asset not found');
     $this->form = new sfAssetRenameForm($asset);
     $this->form->bind($request->getParameter($this->form->getName()));
@@ -425,7 +442,7 @@ class BasesfAssetActions extends sfActions
   {
     $this->forward404Unless($request->isMethod(sfRequest::POST), 'method not allowed');
     $sfAsset = $request->getParameter('sf_asset');
-    $asset = sfAssetPeer::retrieveByPK($sfAsset['id']);
+    $asset = $this->assetProvider->retrieveByPK($sfAsset['id']);
     $this->forward404Unless($asset, 'asset not found');
     $this->form = new sfAssetReplaceForm($asset);
     $this->form->bind($request->getParameter($this->form->getName()), $request->getFiles($this->form->getName()));
@@ -448,7 +465,7 @@ class BasesfAssetActions extends sfActions
   public function executeTinyConfigMedia(sfWebRequest $request)
   {
     $this->forward404Unless($this->hasRequestParameter('id'), 'missing id');
-    $this->sfAsset = sfAssetPeer::retrieveByPk($request->getParameter('id'));
+    $this->sfAsset = $this->assetProvider->retrieveByPk($request->getParameter('id'));
     $this->forward404Unless($this->sfAsset, 'asset not found');
     $this->form = new sfAssetTinyConfigMediaForm($this->sfAsset);
     $this->setLayout($this->getContext()->getConfiguration()->getTemplateDir('sfAsset', 'popupLayout.php') . DIRECTORY_SEPARATOR . 'popupLayout');
@@ -525,7 +542,7 @@ class BasesfAssetActions extends sfActions
     }
     else
     {
-      $asset = sfAssetPeer::retrieveByPk($request->getParameter($id));
+      $asset = $this->assetProvider->retrieveByPk($request->getParameter($id));
       $this->forward404Unless($asset, 'asset not found');
     }
 

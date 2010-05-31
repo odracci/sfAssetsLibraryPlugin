@@ -3,6 +3,9 @@
 $app = "frontend";
 include(dirname(__FILE__).'/../../../../test/bootstrap/functional.php');
 include($configuration->getSymfonyLibDir().'/vendor/lime/lime.php');
+$folderProvider = new sfAssetsFolderProvider();
+$assetProvider = new sfAssetsProvider();
+
 $databaseManager = new sfDatabaseManager($configuration);
 $con = Propel::getConnection();
 
@@ -10,12 +13,12 @@ $con->beginTransaction();
 try
 {
   // prepare test environment
-  sfAssetFolderPeer::doDeleteAll();
-  sfAssetPeer::doDeleteAll();
+  $folderProvider->doDeleteAll();
+  $assetProvider->doDeleteAll();
   sfConfig::set('app_sfAssetsLibrary_upload_dir', 'medias');
   $root = new sfAssetFolder();
   $root->setName(sfConfig::get('app_sfAssetsLibrary_upload_dir'));
-  sfAssetFolderPeer::createRoot($root);
+  $folderProvider->createRoot($root);
   $root->save();
   $rootId = $root->getId();
     
@@ -90,19 +93,19 @@ try
   #     raikkonen.jpg
 
   // Bug in Propel instance pooling + NestedSets...
-  sfAssetFolderPeer::clearInstancePool();
-  $root = sfAssetFolderPeer::retrieveByPk($rootId);
-  $sfAssetFolder2 = sfAssetFolderPeer::retrieveByPk($id2);
-  $sfAssetFolder3 = sfAssetFolderPeer::retrieveByPk($id3);
+  $folderProvider->clearInstancePool();
+  $root = $folderProvider->retrieveByPk($rootId);
+  $sfAssetFolder2 = $folderProvider->retrieveByPk($id2);
+  $sfAssetFolder3 = $folderProvider->retrieveByPk($id3);
   
   $t->is($sfAssetFolder2->retrieveParent()->getId(), $root->getId(), 'move() gives the correct parent');
   $t->is($sfAssetFolder3->retrieveParent()->retrieveParent()->getId(), $root->getId(), 'move() also moves children');
   $t->is($sfAssetFolder2->getRelativePath(), $root->getRelativePath() . '/' . $sfAssetFolder2->getName(), 'move() changes descendants relative paths');
   $t->is($sfAssetFolder3->getRelativePath(), $sfAssetFolder2->getRelativePath() . '/' . $sfAssetFolder3->getName(), 'move() changes descendants relative paths');
   
-  sfAssetPeer::clearInstancePool();
-  $sfAsset = sfAssetPeer::retrieveByPk($sf_asset_id);
-  $sfAsset2 = sfAssetPeer::retrieveByPk($sf_asset2_id);
+  $assetProvider->clearInstancePool();
+  $sfAsset = $assetProvider->retrieveByPk($sf_asset_id);
+  $sfAsset2 = $assetProvider->retrieveByPk($sf_asset2_id);
   $t->ok(is_file($sfAsset->getFullPath()), 'move() also moves assets under the moved folder');
   $t->ok(is_file($sfAsset2->getFullPath()), 'move() also moves assets under the moved folder');
 }

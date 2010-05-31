@@ -3,6 +3,10 @@
 $app = "frontend";
 include(dirname(__FILE__).'/../../../../test/bootstrap/functional.php');
 include($configuration->getSymfonyLibDir().'/vendor/lime/lime.php');
+
+$folderProvider = new sfAssetsFolderProvider();
+$assetProvider = new sfAssetsProvider();
+
 $databaseManager = new sfDatabaseManager($configuration);
 $con = Propel::getConnection();
 
@@ -10,12 +14,12 @@ $con->beginTransaction();
 try
 {
   // prepare test environment
-  sfAssetFolderPeer::doDeleteAll();
-  sfAssetPeer::doDeleteAll();
+  $folderProvider->doDeleteAll();
+  $assetProvider->doDeleteAll();
   sfConfig::set('app_sfAssetsLibrary_upload_dir', 'medias');
   $root = new sfAssetFolder();
   $root->setName(sfConfig::get('app_sfAssetsLibrary_upload_dir'));
-  sfAssetFolderPeer::createRoot($root);
+  $folderProvider->createRoot($root);
   $root->save();
 
   // run the tests
@@ -78,7 +82,7 @@ try
   $asset1->delete();
   $t->ok(! is_file($old_path),'delete() physically removes asset');
   $t->ok(! is_file($old_thumb_path),'delete() physically removes thumbnail');
-  $null = sfAssetPeer::retrieveByPk($old_id);
+  $null = $assetProvider->retrieveByPk($old_id);
   $t->ok(! $null,'delete() removes asset from DB');
 }
 catch (Exception $e)
